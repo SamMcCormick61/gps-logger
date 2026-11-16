@@ -1,3 +1,23 @@
+# ESP-IDF build output
+build/
+build_*/
+
+# Generated config (sdkconfig.defaults* are the tracked source of truth)
+sdkconfig
+sdkconfig.old
+
+# Downloaded components
+managed_components/
+dependencies.lock
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# C/C++ (from GitHub template)
 # Prerequisites
 *.d
 

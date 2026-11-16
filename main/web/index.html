@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GPS Logger</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#677084; --line:#e2e5ea; --accent:#1f7a4d; --danger:#b3261e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14171c; --card:#1d2129; --text:#e8eaee; --muted:#9aa3b2; --line:#2c323d; --accent:#3fbf7f; --danger:#ff6b61; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font:16px/1.4 system-ui, -apple-system, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width:560px; margin:0 auto; padding:16px; }
+  h1 { font-size:22px; margin:4px 0 12px; }
+  h2 { font-size:16px; margin:0 0 10px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:14px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; }
+  .k { color:var(--muted); font-size:13px; }
+  .v { font-weight:600; }
+  .ride { display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--line); }
+  .ride:first-child { border-top:0; }
+  .ride .info { flex:1; min-width:0; }
+  .ride .when { font-weight:600; }
+  .ride .meta { color:var(--muted); font-size:13px; }
+  a.btn, button { font:inherit; font-size:14px; border-radius:8px; padding:8px 12px; border:1px solid var(--line); background:var(--card); color:var(--text); text-decoration:none; cursor:pointer; white-space:nowrap; }
+  a.btn.primary, button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.danger { color:var(--danger); }
+  .bar { height:8px; background:var(--line); border-radius:4px; overflow:hidden; margin-top:6px; }
+  .bar > div { height:100%; background:var(--accent); width:0; }
+  .muted { color:var(--muted); font-size:14px; }
+  input[type=file] { width:100%; margin:6px 0 10px; }
+  input:not([type=file]) { font:inherit; width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--text); margin:4px 0 10px; }
+  .row { display:flex; gap:8px; align-items:center; }
+  .row input { flex:1; }
+</style>
+</head>
+<body>
+<main>
+  <h1>GPS Logger</h1>
+
+  <section class="card">
+    <h2>Status</h2>
+    <div class="grid">
+      <div><div class="k">GPS</div><div class="v" id="gps">…</div></div>
+      <div><div class="k">Satellites</div><div class="v" id="sats">…</div></div>
+      <div><div class="k">Storage</div><div class="v" id="fs">…</div></div>
+      <div><div class="k">Firmware</div><div class="v" id="fw">…</div></div>
+    </div>
+    <div class="bar"><div id="fsbar"></div></div>
+    <p class="muted" id="note">Logging is paused while Wi-Fi is on.</p>
+  </section>
+
+  <section class="card">
+    <h2>Rides</h2>
+    <div id="rides" class="muted">Loading…</div>
+  </section>
+
+  <section class="card">
+    <h2>Home Wi-Fi</h2>
+    <p class="muted" id="wifinow">…</p>
+    <label class="k" for="wssid">Network</label>
+    <div class="row">
+      <input id="wssid" list="wlist" placeholder="Network name" autocomplete="off">
+      <button id="wscan">Scan</button>
+    </div>
+    <datalist id="wlist"></datalist>
+    <label class="k" for="wpass">Password</label>
+    <input id="wpass" type="password" placeholder="Password" autocomplete="off">
+    <div class="row">
+      <button class="primary" id="wsave">Save</button>
+      <button class="danger" id="wforget">Forget</button>
+    </div>
+    <p class="muted" id="wmsg">Next time you hold BOOT, the logger tries this network first. If it can't connect within 15 s it starts its own hotspot as usual.</p>
+  </section>
+
+  <section class="card">
+    <h2>Sleep</h2>
+    <p class="muted" id="pnow">…</p>
+    <label class="k" for="psleep">Seconds without movement before deep sleep (0 = never, minimum 30)</label>
+    <div class="row">
+      <input id="psleep" type="number" min="0" max="86400" step="1" inputmode="numeric">
+      <button class="primary" id="psave">Save</button>
+    </div>
+    <p class="muted" id="pmsg">Sleep only counts down while Wi-Fi is off. Moving the logger or pressing BOOT wakes it.</p>
+    <div class="row" style="justify-content:space-between">
+      <span class="k">Start / sleep / wake log (newest first)</span>
+      <span class="row"><button id="evload">Refresh</button><button class="danger" id="evclear">Clear</button></span>
+    </div>
+    <pre id="events" class="muted" style="white-space:pre-wrap;max-height:260px;overflow:auto;margin:8px 0 0;font-size:13px">Loading…</pre>
+  </section>
+
+  <section class="card">
+    <h2>Firmware update</h2>
+    <p class="muted">Pick <b>build/gps_logger.bin</b> from your project folder.</p>
+    <input type="file" id="fwfile" accept=".bin">
+    <button class="primary" id="fwbtn">Upload and restart</button>
+    <div class="bar"><div id="fwbar"></div></div>
+    <p class="muted" id="fwmsg"></p>
+  </section>
+
+  <button id="off">Turn Wi-Fi off and resume logging</button>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function fmtDate(unix) {
+  return new Date(unix * 1000).toLocaleString([], { weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+function fmtDur(s) {
+  const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+  return h ? `${h} h ${m} min` : `${m} min`;
+}
+
+async function loadStatus() {
+  try {
+    const s = await (await fetch('/api/status')).json();
+    $('gps').textContent = s.fix ? `${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}` : 'No fix';
+    $('sats').textContent = `${s.sats} used / ${s.in_view} in view`;
+    $('fs').textContent = `${s.fs_used_kb} of ${s.fs_total_kb} KB`;
+    $('fsbar').style.width = `${Math.min(100, 100 * s.fs_used_kb / s.fs_total_kb)}%`;
+    $('fw').textContent = `${s.fw} (${s.partition})`;
+    $('note').textContent = `Logging is paused while Wi-Fi is on. Wi-Fi turns off by itself after ${s.idle_off_min} min with this page closed.`;
+  } catch (e) { $('gps').textContent = 'Not connected'; }
+}
+
+async function loadRides() {
+  const box = $('rides');
+  try {
+    const rides = await (await fetch('/api/rides')).json();
+    rides.sort((a, b) => b.start - a.start);
+    if (!rides.length) { box.textContent = 'No rides recorded yet.'; return; }
+    box.textContent = '';
+    for (const r of rides) {
+      const row = document.createElement('div');
+      row.className = 'ride';
+      const info = document.createElement('div');
+      info.className = 'info';
+      const when = document.createElement('div');
+      when.className = 'when';
+      when.textContent = r.points ? fmtDate(r.start) : r.name;
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = `${fmtDur(r.duration)} · ${r.points} points`;
+      info.append(when, meta);
+      const dl = document.createElement('a');
+      dl.className = 'btn primary';
+      dl.href = `/ride.gpx?name=${encodeURIComponent(r.name)}`;
+      dl.textContent = 'GPX';
+      const del = document.createElement('button');
+      del.className = 'danger';
+      del.textContent = 'Delete';
+      del.onclick = async () => {
+        if (!confirm(`Delete the ride from ${when.textContent}? This can't be undone.`)) return;
+        await fetch(`/api/delete?name=${encodeURIComponent(r.name)}`, { method:'POST' });
+        loadRides(); loadStatus();
+      };
+      row.append(info, dl, del);
+      box.append(row);
+    }
+  } catch (e) { box.textContent = 'Could not load rides.'; }
+}
+
+$('fwbtn').onclick = () => {
+  const file = $('fwfile').files[0];
+  if (!file) { $('fwmsg').textContent = 'Choose a .bin file first.'; return; }
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/ota');
+  xhr.upload.onprogress = e => { if (e.lengthComputable) $('fwbar').style.width = `${100 * e.loaded / e.total}%`; };
+  xhr.onload = () => {
+    if (xhr.status === 200) {
+      $('fwmsg').textContent = 'Firmware accepted. Restarting… hold BOOT again to turn Wi-Fi back on.';
+    } else {
+      $('fwmsg').textContent = `Update failed: ${xhr.responseText}`;
+    }
+  };
+  xhr.onerror = () => { $('fwmsg').textContent = 'Upload interrupted. Nothing was changed.'; };
+  $('fwmsg').textContent = `Uploading ${(file.size / 1024).toFixed(0)} KB…`;
+  xhr.send(file);
+};
+
+async function loadWifi() {
+  try {
+    const w = await (await fetch('/api/wifi')).json();
+    const now = w.mode === 'home' ? `Connected to your home Wi-Fi as http://gpslogger.local (${w.ip}).`
+                                  : 'Using the logger\'s own hotspot.';
+    let txt = w.saved_ssid ? `${now} Saved network: ${w.saved_ssid}.` : `${now} No home network saved.`;
+    if (w.mode !== 'home' && w.saved_ssid && w.last_error) txt += ` Last try failed: ${w.last_error}.`;
+    $('wifinow').textContent = txt;
+    if (w.saved_ssid && !$('wssid').value) $('wssid').value = w.saved_ssid;
+  } catch (e) {}
+}
+
+$('wscan').onclick = async () => {
+  $('wscan').textContent = 'Scanning…';
+  try {
+    const nets = await (await fetch('/api/scan')).json();
+    nets.sort((a, b) => b.rssi - a.rssi);
+    $('wlist').innerHTML = '';
+    for (const n of nets) { const o = document.createElement('option'); o.value = n.ssid; $('wlist').append(o); }
+    $('wmsg').textContent = nets.length ? `Found ${nets.length} networks. Tap the network box to pick one.` : 'No networks found.';
+  } catch (e) { $('wmsg').textContent = 'Scan failed.'; }
+  $('wscan').textContent = 'Scan';
+};
+
+$('wsave').onclick = async () => {
+  $('wssid').value = $('wssid').value.trim();
+  const body = new URLSearchParams({ ssid: $('wssid').value, pass: $('wpass').value });
+  $('wmsg').textContent = 'Saving…';
+  let r;
+  try { r = await fetch('/api/wifi', { method:'POST', body }); }
+  catch (e) { $('wmsg').textContent = 'Not saved: lost connection to the logger.'; return; }
+  $('wmsg').textContent = r.ok ? `Saved "${$('wssid').value}". It will be used the next time you turn Wi-Fi on.` : `Not saved: ${await r.text()}`;
+  if (r.ok) { $('wpass').value = ''; loadWifi(); }
+};
+
+$('wforget').onclick = async () => {
+  if (!confirm('Forget the saved home network?')) return;
+  await fetch('/api/wifi_forget', { method:'POST' });
+  $('wssid').value = ''; $('wmsg').textContent = 'Forgotten. The logger will use its own hotspot.';
+  loadWifi();
+};
+
+$('off').onclick = async () => {
+  await fetch('/api/wifi_off', { method:'POST' });
+  document.body.innerHTML = '<main><h1>Wi-Fi off</h1><p>Logging has resumed. Hold BOOT for 2 s to turn Wi-Fi on again.</p></main>';
+};
+
+async function loadPower() {
+  try {
+    const p = await (await fetch('/api/power')).json();
+    $('psleep').value = p.sleep_s;
+    $('pnow').textContent = !p.accel ? 'No accelerometer found, so the logger never sleeps.'
+      : p.sleep_s ? `Sleeps after ${p.sleep_s} s (${(p.sleep_s / 60).toFixed(1)} min) without movement.`
+      : 'Deep sleep is off.';
+  } catch (e) {}
+}
+
+async function loadEvents() {
+  try {
+    const t = await (await fetch('/api/events')).text();
+    const lines = t.trim().split('\n').filter(l => l).reverse();
+    $('events').textContent = lines.length ? lines.join('\n') : 'Nothing logged yet.';
+  } catch (e) { $('events').textContent = 'Could not load the log.'; }
+}
+
+$('psave').onclick = async () => {
+  const v = $('psleep').value.trim();
+  if (!/^\d+$/.test(v)) { $('pmsg').textContent = 'Enter a whole number of seconds.'; return; }
+  let r;
+  try { r = await fetch('/api/power', { method:'POST', body: new URLSearchParams({ sleep_s: v }) }); }
+  catch (e) { $('pmsg').textContent = 'Not saved: lost connection to the logger.'; return; }
+  $('pmsg').textContent = r.ok ? `Saved: ${await r.text()} s. Applies straight away (once Wi-Fi is off).` : `Not saved: ${await r.text()}`;
+  loadPower(); loadEvents();
+};
+$('evload').onclick = loadEvents;
+$('evclear').onclick = async () => {
+  if (!confirm('Clear the sleep/wake log?')) return;
+  await fetch('/api/events_clear', { method:'POST' });
+  loadEvents();
+};
+
+loadStatus(); loadRides(); loadWifi(); loadPower(); loadEvents();
+setInterval(loadStatus, 3000);
+</script>
+</body>
+</html>

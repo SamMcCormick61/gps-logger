@@ -1,0 +1,10 @@
+dependencies:
+  # LittleFS filesystem for ride logs (power-fail safe, wear levelling)
+  joltwallet/littlefs:
+    git: https://github.com/joltwallet/esp_littlefs.git
+    version: v1.22.3
+  # mDNS so the page is reachable at http://gpslogger.local on home Wi-Fi
+  espressif/mdns:
+    git: https://github.com/espressif/esp-protocols.git
+    path: components/mdns
+    version: mdns-v1.14.0

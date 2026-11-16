@@ -1,0 +1,13 @@
+# Overrides for the bare ESP32-S3-WROOM-1-N16R8 module (16 MB flash, 8 MB octal PSRAM)
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_16mb.csv"
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_GPS_TX_GPIO=17
+CONFIG_GPS_RX_GPIO=18
+# No LED on the bare module (set a pin here if you add a WS2812)
+CONFIG_STATUS_LED_GPIO=-1
+# GPS supply switch (P-MOSFET gate), see WIRING.md
+CONFIG_GPS_POWER_GPIO=7
+# P-MOSFET in the GPS VCC line (pin low = on)
+# CONFIG_GPS_POWER_ACTIVE_HIGH is not set

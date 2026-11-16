@@ -1,0 +1,92 @@
+menu "GPS logger"
+
+    choice GPS_MODEL
+        prompt "GPS module"
+        default GPS_MODEL_NEO6M
+        config GPS_MODEL_NEO6M
+            bool "u-blox NEO-6M"
+        config GPS_MODEL_ATGM336H
+            bool "ATGM336H"
+    endchoice
+
+    config GPS_POWER_GPIO
+        int "GPS power switch pin, P-MOSFET gate (-1 = GPS always powered)"
+        default -1
+        range -1 21
+        help
+            Driven low to power the GPS. A resistor from the gate to 3.3 V keeps
+            the GPS off while the S3 is in deep sleep.
+
+    config GPS_POWER_ACTIVE_HIGH
+        bool "GPS power pin drives an NPN low-side switch (high = GPS on)"
+        default n
+        depends on GPS_POWER_GPIO >= 0
+        help
+            Off (default): P-MOSFET or PNP in the GPS VCC line, pin low = on,
+            pull-up resistor to 3.3 V keeps it off in sleep.
+            On: NPN (e.g. C945) in the GPS GND line, pin high = on,
+            pull-down resistor to GND keeps it off in sleep.
+
+    config GPS_TX_GPIO
+        int "S3 TX pin (wire to GPS RX)"
+        default 12
+        range 0 48
+
+    config GPS_RX_GPIO
+        int "S3 RX pin (wire to GPS TX)"
+        default 13
+        range 0 48
+
+    config STATUS_LED_GPIO
+        int "WS2812 RGB status LED pin (-1 = no LED)"
+        default 48
+        range -1 48
+        help
+            ESP32-S3 Super Mini: usually 48. Waveshare ESP32-S3-Zero: 21.
+
+    config WIFI_AP_PASSWORD
+        string "Wi-Fi hotspot password (8+ characters)"
+        default "ridelogger"
+
+    config WIFI_BUTTON_GPIO
+        int "Button that toggles Wi-Fi when held 2 s"
+        default 0
+
+    config WIFI_IDLE_OFF_MIN
+        int "Turn Wi-Fi off after this many minutes without a page request"
+        default 10
+
+    config ACCEL_SDA_GPIO
+        int "LIS3DH SDA pin"
+        default 5
+
+    config ACCEL_SCL_GPIO
+        int "LIS3DH SCL pin"
+        default 6
+
+    config ACCEL_INT_GPIO
+        int "LIS3DH INT1 pin, wakes from deep sleep (-1 = no accelerometer)"
+        default 4
+        range -1 21
+        help
+            Must be GPIO0-21 (RTC pins) to wake the S3 from deep sleep.
+
+    config ACCEL_WAKE_THRESHOLD_MG
+        int "Movement threshold, mg (lower = more sensitive)"
+        default 96
+        range 16 2000
+
+    config SLEEP_IDLE_MIN
+        int "Default deep sleep delay in minutes (0 = never); the web page setting overrides it"
+        default 5
+
+    config SLEEP_CURRENT_TEST
+        bool "Sleep current test: deep sleep 10 s after power-on, nothing else runs"
+        default n
+        help
+            For measuring the board's own sleep current. GPS, accelerometer, Wi-Fi
+            and logging are never started; GPS power and the LED pin are switched
+            off, then the S3 deep-sleeps. Press BOOT to wake (it sleeps again 10 s
+            later). Build with sdkconfig.sleeptest, see WIRING.md.
+
+endmenu

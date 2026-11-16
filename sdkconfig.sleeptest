@@ -1,0 +1,4 @@
+# Sleep current test build: the S3 board deep-sleeps 10 s after power-on and
+# nothing else runs. Build into its own folder so the normal build is untouched:
+#   idf.py -B build_sleeptest -D SDKCONFIG=build_sleeptest/sdkconfig -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.sleeptest" -p COM4 flash monitor
+CONFIG_SLEEP_CURRENT_TEST=y

@@ -1,0 +1,31 @@
+# Default build: ESP32-S3 Super Mini (4 MB flash) on the breadboard.
+# For the bare N16R8 module, build with:
+#   idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.n16r8" build
+CONFIG_IDF_TARGET="esp32s3"
+
+# Flash / partitions (4 MB works on any S3 board, even ones with more flash)
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# OTA: roll back automatically if new firmware doesn't confirm itself
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+
+# Log console over the native USB-C port (GPIO19/20)
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# GPS on GPIO12 (TX) / GPIO13 (RX)
+CONFIG_GPS_TX_GPIO=12
+CONFIG_GPS_RX_GPIO=13
+
+# GPS supply switch on GPIO7, see WIRING.md. Harmless if not fitted.
+# Sam's Super Mini uses a 2N4125 PNP in the GPS VCC line (pin low = GPS on).
+# For an NPN (e.g. C945) in the GPS GND line instead, set CONFIG_GPS_POWER_ACTIVE_HIGH=y.
+CONFIG_GPS_POWER_GPIO=7
+# CONFIG_GPS_POWER_ACTIVE_HIGH is not set
+
+# WS2812 RGB status LED (Super Mini: GPIO48)
+CONFIG_STATUS_LED_GPIO=48
+
+# GPS module in use: ATGM336H (set CONFIG_GPS_MODEL_NEO6M=y for a NEO-6M)
+CONFIG_GPS_MODEL_ATGM336H=y
